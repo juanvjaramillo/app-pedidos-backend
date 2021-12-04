@@ -9,10 +9,11 @@ import {
 } from '@loopback/repository';
 import {
   del, get,
-  getModelSchemaRef, param, patch, post, put, requestBody,
+  getModelSchemaRef, HttpErrors, param, patch, post, put, requestBody,
   response
 } from '@loopback/rest';
-import {Persona} from '../models';
+import {Keys} from '../config/keys';
+import {Credentials, Persona} from '../models';
 import {PersonaRepository} from '../repositories';
 import {AutenticacionService} from '../services';
 const fetch = require('node-fetch');
@@ -24,6 +25,29 @@ export class PersonaController {
     @service(AutenticacionService)
     public servicioAutenticacion: AutenticacionService,
   ) { }
+
+  @post('/showPerson')
+  @response(200, {
+    description: 'Specific person'
+  })
+  async showPerson(
+    @requestBody() credentials: Credentials
+  ){
+    let person = await this.servicioAutenticacion.ShowInfoPerson(credentials.user, credentials.KEY)
+    if(person){
+      let token = this.servicioAutenticacion.GenerateTokenJWT(person);
+      return{
+        data:{
+          nombres: person.nombres,
+          correo: person.correo,
+          id: person.id
+        },
+        tk: token
+      }
+    }else{
+      throw new HttpErrors[401]('Error')
+    }
+  }
 
   @post('/personas')
   @response(200, {
@@ -44,15 +68,15 @@ export class PersonaController {
     persona: Omit<Persona, 'id'>,
   ): Promise<Persona> {
 
-    let clave = this.servicioAutenticacion.GenerarClave();
-    let claveCifrada = this.servicioAutenticacion.CifrarClave(clave);
+    let clave = this.servicioAutenticacion.GeneratePasswordFunction();
+    let claveCifrada = this.servicioAutenticacion.EncryptPasswordFunction(clave);
     persona.clave = claveCifrada;
     let p = await this.personaRepository.create(persona);
     // Llamados asyncronos a urls externas usando node-fetch npm i node-fetch
     let destino = persona.correo;
     let asunto = 'Registro en la plataforma';
     let contenido = `Hola ${persona.nombres}, su nombre de usuario es: ${persona.correo} y contraseña es: ${clave}`
-    fetch(`http://127.0.0.1:5000/envio-correo?correo_destino=${destino}&asunto=${asunto}&contenido=${contenido}`)
+    fetch(`${Keys.urlNotificacions}/envio-correo?correo_destino=${destino}&asunto=${asunto}&contenido=${contenido}`)
       .then((data: any) => {
         console.log(data)
       })
