@@ -54,7 +54,7 @@ export class PersonaController {
     let contenido = `Hola ${persona.nombres}, su nombre de usuario es: ${persona.correo} y contraseña es: ${clave}`
     fetch(`http://127.0.0.1:5000/envio-correo?correo_destino=${destino}&asunto=${asunto}&contenido=${contenido}`)
       .then((data: any) => {
-        console.log(data);
+        console.log(data)
       })
     return p;
   }
